@@ -5,5 +5,5 @@ qdrant-client
 PyPDF2
 python-dotenv
 tqdm
-sentence-transformers
+requests
 gunicorn
