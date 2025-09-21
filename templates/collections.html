@@ -12,4 +12,16 @@
     <li class="list-group-item">No collections found.</li>
   {% endfor %}
 </ul>
+<h3 class="mt-4">Create New Collection</h3>
+<form method="POST" action="{{ url_for('create_collection') }}" class="mb-4">
+  <div class="mb-3">
+    <label for="name" class="form-label">Collection Name</label>
+    <input type="text" class="form-control" id="name" name="name" required>
+  </div>
+  <div class="mb-3">
+    <label for="description" class="form-label">Description</label>
+    <input type="text" class="form-control" id="description" name="description">
+  </div>
+  <button type="submit" class="btn btn-primary">Create Collection</button>
+</form>
 {% endblock %}

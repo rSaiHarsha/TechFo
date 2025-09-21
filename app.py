@@ -1,3 +1,5 @@
+# Define get_embeddings at the module level
+
 import os
 import datetime
 from flask import Flask, request, render_template, redirect, url_for, flash
@@ -11,10 +13,14 @@ from qdrant_client.http import models as qmodels
 import PyPDF2
 
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer
+
+import requests
 
 # Load environment variables from .env
 load_dotenv()
+
+def get_embeddings(texts):
+    return get_mistral_embeddings(texts)
 
 # Connection check for Qdrant and MongoDB
 def check_connections():
@@ -60,8 +66,25 @@ qdrant_client = QdrantClient(
     api_key=QDRANT_API_KEY,
 )
 
-# Hugging Face embeddings model (free, local)
-embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+# Mistral API endpoint
+MISTRAL_API_URL = "https://api.mistral.ai/v1/embeddings"
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+
+def get_mistral_embeddings(texts):
+    headers = {
+        "Authorization": f"Bearer {MISTRAL_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": "mistral-embed",
+        "input": texts,
+    }
+    response = requests.post(MISTRAL_API_URL, json=payload, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+    # Return only the embeddings as a list of lists
+    return [item["embedding"] for item in data["data"]]
 
 # Helpers
 def allowed_file(filename):
@@ -76,8 +99,6 @@ def extract_text_from_pdf(path):
             text_chunks.append(text)
     return "\n".join(text_chunks)
 
-def get_hf_embeddings(texts):
-    return embedding_model.encode(texts, convert_to_numpy=True).tolist()
 
 @app.route('/clear_collection/<collection_name>', methods=['POST'])
 def clear_collection(collection_name):
@@ -114,23 +135,43 @@ def index():
         search_query = request.form.get('search_query')
         selected_collection = request.form.get('search_collection')
         if search_query and selected_collection:
-            # Embed the query
-            query_vec = embedding_model.encode([search_query], convert_to_numpy=True)[0]
-            # Search Qdrant
+            query_vec = get_embeddings([search_query])[0]
             try:
-                result = qdrant_client.search(
-                    collection_name=selected_collection,
-                    query_vector=query_vec,
-                    limit=10
-                )
-                search_results = [
-                    {
-                        'score': r.score,
-                        'source': r.payload.get('source', 'N/A'),
-                        'collection': r.payload.get('collection', 'N/A'),
-                        'chunk': r.payload.get('chunk') or r.payload.get('page_content', 'N/A'),
-                    } for r in result
-                ]
+                if selected_collection == "__all__":
+                    # Search all collections
+                    search_results = []
+                    for c in cols:
+                        try:
+                            result = qdrant_client.search(
+                                collection_name=c['name'],
+                                query_vector=query_vec,
+                                limit=5
+                            )
+                            for r in result:
+                                search_results.append({
+                                    'score': r.score,
+                                    'source': r.payload.get('source', 'N/A'),
+                                    'collection': r.payload.get('collection', c['name']),
+                                    'chunk': r.payload.get('chunk') or r.payload.get('page_content', 'N/A'),
+                                })
+                        except Exception as e:
+                            continue
+                    # Sort by score descending
+                    search_results = sorted(search_results, key=lambda x: x['score'], reverse=True)[:10]
+                else:
+                    result = qdrant_client.search(
+                        collection_name=selected_collection,
+                        query_vector=query_vec,
+                        limit=10
+                    )
+                    search_results = [
+                        {
+                            'score': r.score,
+                            'source': r.payload.get('source', 'N/A'),
+                            'collection': r.payload.get('collection', 'N/A'),
+                            'chunk': r.payload.get('chunk') or r.payload.get('page_content', 'N/A'),
+                        } for r in result
+                    ]
             except Exception as e:
                 flash(f'Search error: {e}', 'danger')
     return render_template('index.html', collections=cols, search_results=search_results, search_query=search_query, selected_collection=selected_collection)
@@ -148,6 +189,7 @@ def create_collection():
         flash('Collection name required', 'danger')
         return redirect(url_for('index'))
 
+
     existing = collections_meta.find_one({'name': name})
     if existing:
         flash('Collection already exists', 'warning')
@@ -164,7 +206,7 @@ def create_collection():
     try:
         qdrant_client.recreate_collection(
             collection_name=name,
-            vectors_config=qmodels.VectorParams(size=384, distance=qmodels.Distance.COSINE),
+            vectors_config=qmodels.VectorParams(size=1024, distance=qmodels.Distance.COSINE),
         )
     except Exception as e:
         print('qdrant create collection failed:', e)
@@ -196,6 +238,7 @@ def upload():
     # Save file in MongoDB GridFS
     file_id = fs.put(file, filename=filename, collection=collection_name)
 
+
     # Read file back from GridFS
     grid_out = fs.get(file_id)
     content = grid_out.read()
@@ -217,7 +260,7 @@ def upload():
     docs = splitter.split_text(text)
     documents = [Document(page_content=t, metadata={'source': filename}) for t in docs]
 
-    vectors = get_hf_embeddings([d.page_content for d in documents])
+    vectors = get_embeddings([d.page_content for d in documents])
 
     points = []
     for i, vec in enumerate(vectors):
@@ -232,7 +275,7 @@ def upload():
     flash(f'Uploaded and indexed {len(documents)} chunks to collection {collection_name}', 'success')
     return redirect(url_for('index'))
 
-@app.route('/view/<collection_name>')
+    query_vec = get_embeddings([search_query])[0]
 def view_collection(collection_name):
     meta = collections_meta.find_one({'name': collection_name})
     try:

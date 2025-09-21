@@ -23,6 +23,7 @@
       <label for="search_collection" class="form-label">Collection</label>
       <select class="form-select" id="search_collection" name="search_collection" required>
         <option value="">Choose...</option>
+        <option value="__all__" {% if selected_collection == "__all__" %}selected{% endif %}>All Collections</option>
         {% for c in collections %}
           <option value="{{ c.name }}" {% if selected_collection == c.name %}selected{% endif %}>{{ c.name }}</option>
         {% endfor %}

@@ -6,6 +6,7 @@ __pycache__/
 # C extensions
 *.so
 
+
 # Distribution / packaging
 .Python
 build/
@@ -48,6 +49,7 @@ coverage.xml
 
 # dotenv
 .env
+.appV1.py
 .env.*
 
 # VS Code
