@@ -1,0 +1,21 @@
+{% extends 'layout.html' %}
+{% block title %}Upload File - Tech Collections{% endblock %}
+{% block content %}
+<h2>Upload File</h2>
+<form method="post" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label for="file" class="form-label">Select PDF or TXT file</label>
+    <input class="form-control" type="file" id="file" name="file" required>
+  </div>
+  <div class="mb-3">
+    <label for="collection" class="form-label">Select Collection</label>
+    <select class="form-select" id="collection" name="collection" required>
+      <option value="">Choose...</option>
+      {% for c in collections %}
+        <option value="{{ c.name }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary">Upload & Index</button>
+</form>
+{% endblock %}

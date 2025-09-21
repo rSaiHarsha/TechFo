@@ -1,0 +1,9 @@
+flask
+pymongo
+langchain>=0.0.200
+qdrant-client
+PyPDF2
+python-dotenv
+tqdm
+sentence-transformers
+gunicorn

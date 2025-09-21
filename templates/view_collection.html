@@ -1,0 +1,23 @@
+{% extends 'layout.html' %}
+{% block title %}View Collection - Tech Collections{% endblock %}
+{% block content %}
+<h2>Collection: {{ meta.name }}</h2>
+<p>{{ meta.description }}</p>
+<p><strong>Created:</strong> {{ meta.created_at }} | <strong>Docs count:</strong> {{ meta.docs_count }}</p>
+<form method="post" action="/clear_collection/{{ meta.name }}" onsubmit="return confirm('Are you sure you want to clear all data in this collection?');">
+  <button type="submit" class="btn btn-danger mb-3">Clear All Data</button>
+</form>
+<hr>
+<h4>Indexed Chunks (showing up to 20):</h4>
+<ul class="list-group">
+  {% for p in points %}
+    <li class="list-group-item">
+      <strong>ID:</strong> {{ p.id }}<br>
+      <strong>Source:</strong> {{ p.payload.source }}<br>
+      <strong>Collection:</strong> {{ p.payload.collection }}
+    </li>
+  {% else %}
+    <li class="list-group-item">No points found.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
