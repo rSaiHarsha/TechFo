@@ -11,7 +11,6 @@ from langchain.docstore.document import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 import PyPDF2
-
 from dotenv import load_dotenv
 
 import requests
